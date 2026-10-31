@@ -18,4 +18,9 @@ public class Customer {
     public int getAge() {
         return age;
     }
+    public void updateDetails(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
 }

@@ -9,4 +9,8 @@ public class Car extends Vehicle {
     public double getPrice(int hours) {
         return getPricePerHour() * hours;
     }
+    @Override
+    public boolean canRent(Customer customer) {
+        return customer.getAge()>=18;
+    }
 }

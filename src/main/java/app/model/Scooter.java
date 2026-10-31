@@ -8,4 +8,8 @@ public class Scooter extends Vehicle {
     public double getPrice(int hours){
         return getPricePerHour() * hours +100;
     }
+    @Override
+    public boolean canRent(Customer customer) {
+        return customer.getAge()>=16;
+    }
 }
