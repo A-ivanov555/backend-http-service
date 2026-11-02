@@ -1,7 +1,6 @@
 package app.model;
 
 public abstract class Vehicle {
-
     private int id;
     private String model;
     private double pricePerHour;
@@ -41,10 +40,14 @@ public abstract class Vehicle {
         currentRenter = null;
     }
 
-    public abstract double getPrice(int hours);
-    public abstract boolean canRent(Customer customer);
     public void updateDetails(String model, double pricePerHour) {
         this.model = model;
         this.pricePerHour = pricePerHour;
     }
+
+    public abstract String getType();
+
+    public abstract double getPrice(int hours);
+
+    public abstract boolean canRent(Customer customer);
 }
