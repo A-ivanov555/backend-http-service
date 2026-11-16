@@ -1,53 +1,56 @@
+
 package app.service;
 
 import app.exception.InvalidOperationException;
 import app.exception.NotFoundException;
-import app.model.Car;
 import app.model.Customer;
-import app.model.Scooter;
 import app.model.Vehicle;
+import app.repository.CustomerRepository;
+import app.repository.VehicleRepository;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
+@Service
 public class RentalService {
-    private final HashMap<Integer, Vehicle> vehicles = new HashMap<>();
-    private final HashMap<Integer, Customer> customers = new HashMap<>();
+
+    private final VehicleRepository vehicleRepository;
+    private final CustomerRepository customerRepository;
+
+    public RentalService(
+            VehicleRepository vehicleRepository,
+            CustomerRepository customerRepository
+    ) {
+        this.vehicleRepository = vehicleRepository;
+        this.customerRepository = customerRepository;
+    }
+
+    // Транспорт
 
     public void addVehicle(Vehicle vehicle) {
-        validateVehicleData(
+        if (vehicle == null) {
+            throw new IllegalArgumentException("Транспорт не указан");
+        }
+
+        validateVehicleDetails(
                 vehicle.getId(),
                 vehicle.getModel(),
                 vehicle.getPricePerHour()
         );
 
-        if (vehicles.containsKey(vehicle.getId())) {
+        if (vehicleRepository.existsById(vehicle.getId())) {
             throw new InvalidOperationException(
                     "Транспорт с таким id уже существует"
             );
         }
 
-        vehicles.put(vehicle.getId(), vehicle);
-    }
-
-    public void addCustomer(Customer customer) {
-        validateCustomerData(
-                customer.getId(),
-                customer.getName(),
-                customer.getAge()
-        );
-
-        if (customers.containsKey(customer.getId())) {
-            throw new InvalidOperationException(
-                    "Клиент с таким id уже существует"
-            );
-        }
-
-        customers.put(customer.getId(), customer);
+        vehicleRepository.save(vehicle);
     }
 
     public Vehicle getVehicle(int id) {
-        Vehicle vehicle = vehicles.get(id);
+        validateId(id);
+
+        Vehicle vehicle = vehicleRepository.findById(id);
 
         if (vehicle == null) {
             throw new NotFoundException("Транспорт не найден");
@@ -56,29 +59,10 @@ public class RentalService {
         return vehicle;
     }
 
-    public Customer getCustomer(int id) {
-        Customer customer = customers.get(id);
-
-        if (customer == null) {
-            throw new NotFoundException("Клиент не найден");
-        }
-
-        return customer;
-    }
-
-    public ArrayList<Vehicle> getAllVehicles() {
-        return new ArrayList<>(vehicles.values());
-    }
-
-    public ArrayList<Customer> getAllCustomers() {
-        return new ArrayList<>(customers.values());
-    }
-
     public ArrayList<Vehicle> getVehicles(Boolean available, String type) {
         if (type != null
                 && !type.equalsIgnoreCase("car")
                 && !type.equalsIgnoreCase("scooter")) {
-
             throw new IllegalArgumentException(
                     "Неизвестный тип транспорта"
             );
@@ -86,7 +70,7 @@ public class RentalService {
 
         ArrayList<Vehicle> result = new ArrayList<>();
 
-        for (Vehicle vehicle : vehicles.values()) {
+        for (Vehicle vehicle : vehicleRepository.findAll()) {
             if (available != null
                     && vehicle.isAvailable() != available) {
                 continue;
@@ -103,59 +87,19 @@ public class RentalService {
         return result;
     }
 
-    public ArrayList<Vehicle> getAvailableVehicles() {
-        return getVehicles(true, null);
-    }
-
-    public ArrayList<Vehicle> getCars() {
-        ArrayList<Vehicle> cars = new ArrayList<>();
-
-        for (Vehicle vehicle : vehicles.values()) {
-            if (vehicle instanceof Car) {
-                cars.add(vehicle);
-            }
-        }
-
-        return cars;
-    }
-
-    public ArrayList<Vehicle> getScooters() {
-        ArrayList<Vehicle> scooters = new ArrayList<>();
-
-        for (Vehicle vehicle : vehicles.values()) {
-            if (vehicle instanceof Scooter) {
-                scooters.add(vehicle);
-            }
-        }
-
-        return scooters;
-    }
-
-    public void updateVehicle(
+    public Vehicle updateVehicle(
             int id,
             String model,
             double pricePerHour
     ) {
         Vehicle vehicle = getVehicle(id);
-
-        validateVehicleData(id, model, pricePerHour);
+        validateVehicleDetails(id, model, pricePerHour);
 
         vehicle.updateDetails(model, pricePerHour);
+        return vehicle;
     }
 
-    public void updateCustomer(
-            int id,
-            String name,
-            int age
-    ) {
-        Customer customer = getCustomer(id);
-
-        validateCustomerData(id, name, age);
-
-        customer.updateDetails(name, age);
-    }
-
-    public Vehicle deleteVehicle(int id) {
+    public void deleteVehicle(int id) {
         Vehicle vehicle = getVehicle(id);
 
         if (!vehicle.isAvailable()) {
@@ -164,22 +108,84 @@ public class RentalService {
             );
         }
 
-        return vehicles.remove(id);
+        vehicleRepository.deleteById(id);
     }
 
-    public Customer deleteCustomer(int id) {
-        Customer customer = getCustomer(id);
+    // Клиенты
 
-        for (Vehicle vehicle : vehicles.values()) {
-            if (vehicle.getCurrentRenter() == customer) {
+    public void addCustomer(Customer customer) {
+        if (customer == null) {
+            throw new IllegalArgumentException("Клиент не указан");
+        }
+
+        validateCustomerDetails(
+                customer.getId(),
+                customer.getName(),
+                customer.getAge()
+        );
+
+        if (customerRepository.existsById(customer.getId())) {
+            throw new InvalidOperationException(
+                    "Клиент с таким id уже существует"
+            );
+        }
+
+        customerRepository.save(customer);
+    }
+
+    public Customer getCustomer(int id) {
+        validateId(id);
+
+        Customer customer = customerRepository.findById(id);
+
+        if (customer == null) {
+            throw new NotFoundException("Клиент не найден");
+        }
+
+        return customer;
+    }
+
+    public ArrayList<Customer> getCustomers() {
+        return new ArrayList<>(customerRepository.findAll());
+    }
+
+    public Customer updateCustomer(int id, String name, int age) {
+        Customer customer = getCustomer(id);
+        validateCustomerDetails(id, name, age);
+
+        Customer updatedCustomer = new Customer(id, name, age);
+
+        for (Vehicle vehicle : vehicleRepository.findAll()) {
+            Customer renter = vehicle.getCurrentRenter();
+
+            if (renter != null
+                    && renter.getId() == id
+                    && !vehicle.canRent(updatedCustomer)) {
                 throw new InvalidOperationException(
-                        "Клиент сейчас арендует транспорт"
+                        "Новый возраст не позволяет продолжить аренду"
                 );
             }
         }
 
-        return customers.remove(id);
+        customer.updateDetails(name, age);
+        return customer;
     }
+
+    public void deleteCustomer(int id) {
+        Customer customer = getCustomer(id);
+
+        for (Vehicle vehicle : vehicleRepository.findAll()) {
+            if (vehicle.getCurrentRenter() == customer) {
+                throw new InvalidOperationException(
+                        "Нельзя удалить клиента с активной арендой"
+                );
+            }
+        }
+
+        customerRepository.deleteById(id);
+    }
+
+    // Аренда и возврат
 
     public void rentVehicle(int vehicleId, int customerId) {
         Vehicle vehicle = getVehicle(vehicleId);
@@ -193,7 +199,7 @@ public class RentalService {
 
         if (!vehicle.canRent(customer)) {
             throw new InvalidOperationException(
-                    "Клиент не подходит по возрасту"
+                    "Возраст клиента не подходит для аренды"
             );
         }
 
@@ -212,44 +218,58 @@ public class RentalService {
         vehicle.returnVehicle();
     }
 
-    private void validateVehicleData(
+    public double getRentalPrice(int vehicleId, int hours) {
+        Vehicle vehicle = getVehicle(vehicleId);
+
+        if (hours <= 0) {
+            throw new IllegalArgumentException(
+                    "Количество часов должно быть положительным"
+            );
+        }
+
+        return vehicle.getPrice(hours);
+    }
+
+    // Проверка входных данных
+
+    private void validateId(int id) {
+        if (id <= 0) {
+            throw new IllegalArgumentException(
+                    "id должен быть положительным"
+            );
+        }
+    }
+
+    private void validateVehicleDetails(
             int id,
             String model,
             double pricePerHour
     ) {
-        if (id <= 0) {
-            throw new IllegalArgumentException(
-                    "Id транспорта должен быть положительным"
-            );
-        }
+        validateId(id);
 
         if (model == null || model.isBlank()) {
             throw new IllegalArgumentException(
-                    "Модель транспорта не указана"
+                    "Модель транспорта не должна быть пустой"
             );
         }
 
         if (!Double.isFinite(pricePerHour) || pricePerHour <= 0) {
             throw new IllegalArgumentException(
-                    "Цена должна быть положительной"
+                    "Стоимость часа должна быть положительным числом"
             );
         }
     }
 
-    private void validateCustomerData(
+    private void validateCustomerDetails(
             int id,
             String name,
             int age
     ) {
-        if (id <= 0) {
-            throw new IllegalArgumentException(
-                    "Id клиента должен быть положительным"
-            );
-        }
+        validateId(id);
 
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException(
-                    "Имя клиента не указано"
+                    "Имя клиента не должно быть пустым"
             );
         }
 
