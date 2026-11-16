@@ -1,6 +1,7 @@
 
 package app.controller;
 
+import jakarta.validation.Valid;
 import app.dto.RentRequest;
 import app.dto.VehicleRequest;
 import app.model.Car;
@@ -39,7 +40,7 @@ public class VehicleController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Vehicle createVehicle(@RequestBody VehicleRequest request) {
+    public Vehicle createVehicle(@Valid @RequestBody VehicleRequest request) {
         if (request == null
                 || request.id == null
                 || request.type == null
@@ -73,7 +74,7 @@ public class VehicleController {
     @PutMapping("/{id}")
     public Vehicle updateVehicle(
             @PathVariable int id,
-            @RequestBody VehicleRequest request
+            @Valid @RequestBody VehicleRequest request
     ) {
         if (request == null
                 || request.model == null
@@ -99,7 +100,7 @@ public class VehicleController {
     @PostMapping("/{id}/rent")
     public Vehicle rentVehicle(
             @PathVariable int id,
-            @RequestBody RentRequest request
+            @Valid @RequestBody RentRequest request
     ) {
         if (request == null || request.customerId == null) {
             throw new IllegalArgumentException(

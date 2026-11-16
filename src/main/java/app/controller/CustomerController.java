@@ -1,6 +1,7 @@
 
 package app.controller;
 
+import jakarta.validation.Valid;
 import app.dto.CustomerRequest;
 import app.model.Customer;
 import app.service.RentalService;
@@ -31,7 +32,7 @@ public class CustomerController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Customer createCustomer(@RequestBody CustomerRequest request) {
+    public Customer createCustomer(@Valid @RequestBody CustomerRequest request) {
         if (request == null
                 || request.id == null
                 || request.name == null
@@ -54,7 +55,7 @@ public class CustomerController {
     @PutMapping("/{id}")
     public Customer updateCustomer(
             @PathVariable int id,
-            @RequestBody CustomerRequest request
+            @Valid @RequestBody CustomerRequest request
     ) {
         if (request == null
                 || request.name == null
