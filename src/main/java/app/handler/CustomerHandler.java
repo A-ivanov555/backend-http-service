@@ -54,7 +54,7 @@ public class CustomerHandler implements HttpHandler {
                 case "GET" -> sendJson(
                         exchange,
                         200,
-                        rentalService.getAllCustomers()
+                        rentalService.getCustomers()
                 );
 
                 case "POST" -> createCustomer(exchange);
